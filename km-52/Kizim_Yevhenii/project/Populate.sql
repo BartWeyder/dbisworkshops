@@ -20,16 +20,16 @@ insert into ROLE(ROLENAME) values('moderator');
 insert into ROLE(ROLENAME) values('anonym');
 
 --user
-insert into "USER"(PHONE, ROLENAME, NAME, EMAIL, USERCREATEDTIME)
+insert into USERS(PHONE, ROLENAME, NAME, EMAIL, USERCREATEDTIME)
 values('+380674568969', 'user', 'Bob Marley', 'bob.marley@abc.com', '06-nov-2018');
 
-insert into "USER"(PHONE, ROLENAME, NAME, EMAIL, USERCREATEDTIME)
+insert into USERS(PHONE, ROLENAME, NAME, EMAIL, USERCREATEDTIME)
 values('+380673221487', 'moderator', 'Snoop Dogg', '420@abc.com', '20-apr-2018');
 
-insert into "USER"(PHONE, ROLENAME, NAME, EMAIL, USERCREATEDTIME)
+insert into USERS(PHONE, ROLENAME, NAME, EMAIL, USERCREATEDTIME)
 values('+380671597536', 'moderator', 'Sergei Kopychko', 'kpi@evm.com', '03-nov-2018');
 
-insert into "USER"(PHONE, ROLENAME, NAME, EMAIL, USERCREATEDTIME)
+insert into USERS(PHONE, ROLENAME, NAME, EMAIL, USERCREATEDTIME)
 values('+380671337859', 'user', 'Alla Stolovaja', 'kotleta.po@kievski.com', '01-nov-2018');
 
 

@@ -22,7 +22,7 @@ alter table POST_HAS_TAGS
 alter table POST_HAS_TAGS
    drop constraint FK_POST_HAS_POST_HAS__TAG;
 
-alter table "USER"
+alter table USERS
    drop constraint FK_USER_USER_HAS__ROLE;
 
 drop index POST_HAS_ANSWER_FK;
@@ -51,7 +51,7 @@ drop table TAG cascade constraints;
 
 drop index USER_HAS_ROLE_FK;
 
-drop table "USER" cascade constraints;
+drop table USERS cascade constraints;
 
 /*==============================================================*/
 /* Table: ANSWER                                                */
@@ -61,7 +61,7 @@ create table ANSWER
    AID                  INTEGER              not null,
    PHONE                VARCHAR2(30)         not null,
    PID                  INTEGER              not null,
-   ANSWERTITLE          VARCHAR2(256)        not null,
+   ANSWERTITLE          VARCHAR2(256)                ,
    ANSWERTEXT           VARCHAR2(2000)       not null,
    ANSWERCREATEDTIME    DATE                 not null,
    constraint PK_ANSWER primary key (AID)
@@ -162,14 +162,14 @@ create table TAG
 );
 
 /*==============================================================*/
-/* Table: "USER"                                                */
+/* Table: USERS                                                */
 /*==============================================================*/
-create table "USER" 
+create table USERS 
 (
    PHONE                VARCHAR2(30)         not null,
-   ROLENAME             VARCHAR(20)             not null,
+   ROLENAME             VARCHAR(20)          not null,
    NAME                 VARCHAR2(100)        not null,
-   EMAIL                VARCHAR2(60)         not null UNIQUE,
+   EMAIL                VARCHAR2(60)         UNIQUE,
    USERCREATEDTIME      DATE                 not null,
    constraint PK_USER primary key (PHONE)
 );
@@ -177,7 +177,7 @@ create table "USER"
 /*==============================================================*/
 /* Index: USER_HAS_ROLE_FK                                      */
 /*==============================================================*/
---create index USER_HAS_ROLE_FK on "USER" (
+--create index USER_HAS_ROLE_FK on USERS (
 --   ROLENAME ASC
 --);
 
@@ -187,7 +187,7 @@ alter table ANSWER
 
 alter table ANSWER
    add constraint FK_ANSWER_USER_HAS__USER foreign key (PHONE)
-      references "USER" (PHONE);
+      references USERS (PHONE);
 
 alter table POST
    add constraint FK_POST_POST_HAS__CATEGORY foreign key (CATEGORYTITLE)
@@ -195,7 +195,7 @@ alter table POST
 
 alter table POST
    add constraint FK_POST_USER_HAS__USER foreign key (PHONE)
-      references "USER" (PHONE);
+      references USERS (PHONE);
 
 alter table POST_HAS_TAGS
    add constraint FK_POST_HAS_POST_HAS__POST foreign key (PID)
@@ -205,7 +205,7 @@ alter table POST_HAS_TAGS
    add constraint FK_POST_HAS_POST_HAS__TAG foreign key (TITLE)
       references TAG (TITLE);
 
-alter table "USER"
+alter table USERS
    add constraint FK_USER_USER_HAS__ROLE foreign key (ROLENAME)
       references ROLE (ROLENAME);
 
@@ -230,20 +230,11 @@ alter table role
 alter table TAG  
     add constraint TITLE_CHECK check(REGEXP_LIKE(TITLE, '^[A-Za-z -]{1,20}$'));
     
-alter table "USER"
+alter table USERS
     add constraint PHONE_CHECK check(REGEXP_LIKE(PHONE, '^(\+[0-9]{1,3}|0)[0-9]{3}( ){0,1}[0-9]{7,8}$'));
 
-alter table "USER"
+alter table USERS
     add constraint NAME_CHECK check(REGEXP_LIKE(NAME, '^[A-Za-z -]{5,100}$'));
 
-alter table "USER"
+alter table USERS
     add constraint EMAIL_CHECK check(REGEXP_LIKE(EMAIL, '^([A-Z|a-z|0-9](\.|_){0,1})+[A-Z|a-z|0-9]\@([A-Z|a-z|0-9])+((\.){0,1}[A-Z|a-z|0-9]){2}\.[a-z]{2,3}$'));
-    
-CREATE TRIGGER answer_deletion before delete
-on answer
-for each row
-begin
-    update post 
-    set published = 0
-    where pid = :OLD.pid;
-end;
