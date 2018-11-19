@@ -1,14 +1,14 @@
-CREATE SEQUENCE answer_ids START WITH 1 INCREMENT BY 1;
+CREATE SEQUENCE answer_ids START WITH 5 INCREMENT BY 1 CACHE 2;
 
 CREATE OR REPLACE PACKAGE answer_handle AS
     TYPE answer_tbl IS
         TABLE OF answer%rowtype;
-    PROCEDURE add_answer (
+    FUNCTION add_answer (
         phone_         answer.phone%TYPE,
         pid_           answer.pid%TYPE,
         answertitle_   answer.answertitle%TYPE,
         answertext_    answer.answertext%TYPE
-    );
+    ) RETURN answer.aid%type;
 
     PROCEDURE edit_answer (
         aid_           answer.aid%TYPE,
@@ -42,13 +42,15 @@ END answer_handle;
 
 CREATE OR REPLACE PACKAGE BODY answer_handle AS
 
-    PROCEDURE add_answer (
+    FUNCTION add_answer (
         phone_         answer.phone%TYPE,
         pid_           answer.pid%TYPE,
         answertitle_   answer.answertitle%TYPE,
         answertext_    answer.answertext%TYPE
-    ) IS
+    ) RETURN answer.aid%type IS
+        aid_ answer.aid%type;
     BEGIN
+        aid_ := answer_ids.NEXTVAL;
         INSERT INTO answer (
             aid,
             phone,
@@ -57,13 +59,21 @@ CREATE OR REPLACE PACKAGE BODY answer_handle AS
             answertext,
             answercreatedtime
         ) VALUES (
-            answer_ids.NEXTVAL,
+            aid_,
             phone_,
             pid_,
             answertitle_,
             answertext_,
             current_timestamp
         );
+
+        UPDATE post
+        SET
+            published = 1
+        WHERE
+            pid = pid_;
+            
+        Return aid_;
 
     END add_answer;
 

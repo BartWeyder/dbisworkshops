@@ -1,14 +1,14 @@
-CREATE SEQUENCE post_ids START WITH 1 INCREMENT BY 1;
+CREATE SEQUENCE post_ids START WITH 5 INCREMENT BY 1 CACHE 2;
 
 CREATE OR REPLACE PACKAGE post_handle AS
     TYPE post_tbl IS
         TABLE OF post%rowtype;
-    PROCEDURE add_post (
+    FUNCTION add_post (
         phone_       post.phone%TYPE,
         posttitle_   post.posttitle%TYPE,
         posttext_    post.posttext%TYPE,
         category_    post.categorytitle%TYPE
-    );
+    ) RETURN post.pid%type;
 
     PROCEDURE edit_post (
         pid_         post.pid%TYPE,
@@ -20,10 +20,19 @@ CREATE OR REPLACE PACKAGE post_handle AS
     PROCEDURE delete_post (
         pid_ post.pid%TYPE
     );
-    
-    PROCEDURE publicate_post(pid_ post.pid%TYPE);
-    
-    PROCEDURE hide_post(pid_ post.pid%TYPE);
+
+    PROCEDURE publicate_post (
+        pid_ post.pid%TYPE
+    );
+
+    PROCEDURE hide_post (
+        pid_ post.pid%TYPE
+    );
+
+    PROCEDURE add_tag_to_post (
+        pid_   post.pid%TYPE,
+        tag_   tag.title%TYPE
+    );
 
     FUNCTION get_all_posts RETURN post_tbl
         PIPELINED;
@@ -44,15 +53,18 @@ CREATE OR REPLACE PACKAGE post_handle AS
 
 END post_handle;
 /
+
 CREATE OR REPLACE PACKAGE BODY post_handle AS
 
-    PROCEDURE add_post (
+    FUNCTION add_post (
         phone_       post.phone%TYPE,
         posttitle_   post.posttitle%TYPE,
         posttext_    post.posttext%TYPE,
         category_    post.categorytitle%TYPE
-    ) IS
+    ) RETURN post.pid%type IS
+        new_id post.pid%type;
     BEGIN
+        new_id := post_ids.NEXTVAL;
         INSERT INTO post (
             pid,
             phone,
@@ -62,7 +74,7 @@ CREATE OR REPLACE PACKAGE BODY post_handle AS
             postcreatedtime,
             categorytitle
         ) VALUES (
-            post_ids.NEXTVAL,
+            new_id,
             phone_,
             posttitle_,
             posttext_,
@@ -70,7 +82,7 @@ CREATE OR REPLACE PACKAGE BODY post_handle AS
             current_timestamp,
             category_
         );
-
+        Return new_id;
     END add_post;
 
     PROCEDURE edit_post (
@@ -89,83 +101,124 @@ CREATE OR REPLACE PACKAGE BODY post_handle AS
             post.pid = pid_;
 
     END edit_post;
-    
+
     PROCEDURE delete_post (
         pid_ post.pid%TYPE
-    )
-    IS
-    BEGIN 
-        delete from POST
-         where POST.PID = pid_;
-    END delete_post;
-    
-    PROCEDURE publicate_post(pid_ post.pid%TYPE)
-    IS
+    ) IS
     BEGIN
-        update post
-           set PUBLISHED=1
-         where post.pid = pid_;
+        DELETE FROM post
+        WHERE
+            post.pid = pid_;
+
+    END delete_post;
+
+    PROCEDURE publicate_post (
+        pid_ post.pid%TYPE
+    ) IS
+    BEGIN
+        UPDATE post
+        SET
+            published = 1
+        WHERE
+            post.pid = pid_;
+
     END publicate_post;
 
-    PROCEDURE hide_post(pid_ post.pid%TYPE)
-    IS
-    begin
-      update POST
-         set PUBLISHED=0
-       where post.pid = pid_;
-    end hide_post;
-    
+    PROCEDURE hide_post (
+        pid_ post.pid%TYPE
+    ) IS
+    BEGIN
+        UPDATE post
+        SET
+            published = 0
+        WHERE
+            post.pid = pid_;
+
+    END hide_post;
+
+    PROCEDURE add_tag_to_post (
+        pid_   post.pid%TYPE,
+        tag_   tag.title%TYPE
+    ) IS
+    BEGIN
+        INSERT INTO post_has_tags (
+            pid,
+            title
+        ) VALUES (
+            pid_,
+            tag_
+        );
+
+    END add_tag_to_post;
+
     FUNCTION get_all_posts RETURN post_tbl
         PIPELINED
     IS
-        CURSOR pcur IS 
-            SELECT * FROM post;
+        CURSOR pcur IS
+        SELECT
+            *
+        FROM
+            post;
+
     BEGIN
-        FOR prec IN pcur loop
-          PIPE ROW(prec);
-        end loop;
+        FOR prec IN pcur LOOP
+            PIPE ROW ( prec );
+        END LOOP;
     END get_all_posts;
-    
+
     FUNCTION get_post (
         pid_ post.pid%TYPE
-    ) RETURN post%rowtype
-    IS
-        prec post%rowtype;
+    ) RETURN post%rowtype IS
+        prec   post%rowtype;
     BEGIN
-        select *
-          into prec
-          from post
-         where post.pid = pid_;
-         Return prec;
+        SELECT
+            *
+        INTO prec
+        FROM
+            post
+        WHERE
+            post.pid = pid_;
+
+        RETURN prec;
     END get_post;
 
     FUNCTION get_post_by_title (
         posttitle_ post.posttitle%TYPE
     ) RETURN post_tbl
         PIPELINED
-    IS 
-        CURSOR pcur IS select *
-          from POST
-         where instr(POST.posttitle, posttitle_) > 0;
-    begin
-      for prec in pcur loop
-        pipe row(prec);
-      end loop;
-    end get_post_by_title;
+    IS
+        CURSOR pcur IS
+        SELECT
+            *
+        FROM
+            post
+        WHERE
+            instr(post.posttitle, posttitle_) > 0;
+
+    BEGIN
+        FOR prec IN pcur LOOP
+            PIPE ROW ( prec );
+        END LOOP;
+    END get_post_by_title;
 
     FUNCTION get_post_by_category (
         category_ post.categorytitle%TYPE
     ) RETURN post_tbl
         PIPELINED
-    is 
-        CURSOR pcur IS select *
-          from post
-         where post.categorytitle = category_;
-    begin
-      for prec in pcur loop
-        pipe row(prec);
-      end loop;
-    end get_post_by_category;
+    IS
+        CURSOR pcur IS
+        SELECT
+            *
+        FROM
+            post
+        WHERE
+            post.categorytitle = category_;
+
+    BEGIN
+        FOR prec IN pcur LOOP
+            PIPE ROW ( prec );
+        END LOOP;
+    END get_post_by_category;
 
 END post_handle;
 /
