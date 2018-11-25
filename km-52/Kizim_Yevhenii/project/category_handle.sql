@@ -14,12 +14,9 @@ CREATE OR REPLACE PACKAGE category_handle AS
         categorytitle_ category.categorytitle%TYPE
     ) RETURN category%rowtype;
 
-    FUNCTION get_categories (
+    FUNCTION filter_categories (
         categorytitle_ category.categorytitle%TYPE
     ) RETURN category_tbl
-        PIPELINED;
-
-    FUNCTION get_all_categories RETURN category_tbl
         PIPELINED;
 
 END category_handle;
@@ -65,39 +62,33 @@ CREATE OR REPLACE PACKAGE BODY category_handle AS
         RETURN crec;
     END get_category;
 
-    FUNCTION get_categories (
+    FUNCTION filter_categories (
         categorytitle_ category.categorytitle%TYPE
     ) RETURN category_tbl
         PIPELINED
     IS
-        CURSOR ccur IS
-        SELECT
-            categorytitle
-        FROM
-            category
-        WHERE
-            instr(category.categorytitle, categorytitle_) > 0;
-
+        exec_str   VARCHAR2(200);
+        TYPE catcursor IS REF CURSOR;
+        ccur       catcursor;
+        crec       category%rowtype;
     BEGIN
-        FOR crec IN ccur LOOP
+        IF categorytitle_ IS NULL THEN
+            exec_str := 'SELECT * FROM category';
+        ELSE
+            exec_str := 'SELECT * FROM category WHERE instr(category.categorytitle, '''
+                        || categorytitle_
+                        || ''') > 0';
+        END IF;
+
+        OPEN ccur FOR exec_str;
+
+        LOOP
+            FETCH ccur INTO crec;
+            EXIT WHEN ccur%notfound;
             PIPE ROW ( crec );
         END LOOP;
-    END get_categories;
 
-    FUNCTION get_all_categories RETURN category_tbl
-        PIPELINED
-    IS
-        CURSOR ccur IS
-        SELECT
-            categorytitle
-        FROM
-            category;
-
-    BEGIN
-        FOR crec IN ccur LOOP
-            PIPE ROW ( crec );
-        END LOOP;
-    END get_all_categories;
+    END filter_categories;
 
 END category_handle;
 /

@@ -12,14 +12,16 @@ CREATE OR REPLACE PACKAGE role_handle AS
 
     FUNCTION get_role (
         rolename_ role.rolename%TYPE
-    ) RETURN roles_tbl
-        PIPELINED;
+    ) RETURN role%rowtype;
 
-    FUNCTION get_all_roles RETURN roles_tbl
+    FUNCTION filter_roles (
+        rolename_ role.rolename%TYPE
+    ) RETURN roles_tbl
         PIPELINED;
 
 END role_handle;
 /
+
 CREATE OR REPLACE PACKAGE BODY role_handle AS
 
     PROCEDURE add_role (
@@ -46,37 +48,47 @@ CREATE OR REPLACE PACKAGE BODY role_handle AS
 
     FUNCTION get_role (
         rolename_ role.rolename%TYPE
-    ) RETURN roles_tbl
-        PIPELINED
-    IS
-        CURSOR rcur IS
+    ) RETURN role%rowtype IS
+        rrec   role%rowtype;
+    BEGIN
         SELECT
             *
+        INTO rrec
         FROM
             role
         WHERE
-            instr(role.rolename, rolename_) > 0;
+            role.rolename = rolename_;
 
-    BEGIN
-        FOR rrec IN rcur LOOP
-            PIPE ROW ( rrec );
-        END LOOP;
+        RETURN rrec;
     END get_role;
 
-    FUNCTION get_all_roles RETURN roles_tbl
+    FUNCTION filter_roles (
+        rolename_ role.rolename%TYPE
+    ) RETURN roles_tbl
         PIPELINED
     IS
-        CURSOR rcur IS
-        SELECT
-            *
-        FROM
-            role;
-
+        exec_str   VARCHAR2(500);
+        TYPE rolecursor IS REF CURSOR;
+        rcur       rolecursor;
+        rrec       role%rowtype;
     BEGIN
-        FOR rrec IN rcur LOOP
+        IF rolename_ IS NULL THEN
+            exec_str := 'SELECT * FROM role';
+        ELSE
+            exec_str := 'SELECT * FROM role WHERE instr(role.rolename, '''
+                        || rolename_
+                        || ''') > 0';
+        END IF;
+
+        OPEN rcur FOR exec_str;
+
+        LOOP
+            FETCH rcur INTO rrec;
+            EXIT WHEN rcur%notfound;
             PIPE ROW ( rrec );
         END LOOP;
-    END get_all_roles;
+
+    END filter_roles;
 
 END role_handle;
 /

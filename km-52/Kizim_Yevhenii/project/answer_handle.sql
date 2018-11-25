@@ -8,7 +8,7 @@ CREATE OR REPLACE PACKAGE answer_handle AS
         pid_           answer.pid%TYPE,
         answertitle_   answer.answertitle%TYPE,
         answertext_    answer.answertext%TYPE
-    ) RETURN answer.aid%type;
+    ) RETURN answer.aid%TYPE;
 
     PROCEDURE edit_answer (
         aid_           answer.aid%TYPE,
@@ -24,16 +24,10 @@ CREATE OR REPLACE PACKAGE answer_handle AS
         aid_ answer.aid%TYPE
     ) RETURN answer%rowtype;
 
-    FUNCTION get_answer_by_title (
-        answertitle_ answer.answertitle%TYPE
-    ) RETURN answer_tbl
-        PIPELINED;
-
-    FUNCTION get_all_answers RETURN answer_tbl
-        PIPELINED;
-
-    FUNCTION get_answers_by_author (
-        phone_ answer.phone%TYPE
+    FUNCTION filter_answers (
+        answertitle_   answer.answertitle%TYPE,
+        phone_         answer.phone%TYPE,
+        answertext_    answer.answertext%TYPE
     ) RETURN answer_tbl
         PIPELINED;
 
@@ -47,10 +41,10 @@ CREATE OR REPLACE PACKAGE BODY answer_handle AS
         pid_           answer.pid%TYPE,
         answertitle_   answer.answertitle%TYPE,
         answertext_    answer.answertext%TYPE
-    ) RETURN answer.aid%type IS
-        aid_ answer.aid%type;
+    ) RETURN answer.aid%TYPE IS
+        aid_   answer.aid%TYPE;
     BEGIN
-        aid_ := answer_ids.NEXTVAL;
+        aid_ := answer_ids.nextval;
         INSERT INTO answer (
             aid,
             phone,
@@ -72,9 +66,8 @@ CREATE OR REPLACE PACKAGE BODY answer_handle AS
             published = 1
         WHERE
             pid = pid_;
-            
-        Return aid_;
 
+        RETURN aid_;
     END add_answer;
 
     PROCEDURE edit_answer (
@@ -115,60 +108,58 @@ CREATE OR REPLACE PACKAGE BODY answer_handle AS
         WHERE
             answer.aid = aid_;
 
+        RETURN arec;
     END get_answer;
 
-    FUNCTION get_answer_by_title (
-        answertitle_ answer.answertitle%TYPE
+    FUNCTION filter_answers (
+        answertitle_   answer.answertitle%TYPE,
+        phone_         answer.phone%TYPE,
+        answertext_    answer.answertext%TYPE
     ) RETURN answer_tbl
         PIPELINED
     IS
-        CURSOR acur IS
-        SELECT
-            *
-        FROM
-            answer
-        WHERE
-            instr(answer.answertitle, answertitle_) > 0;
-
+        exec_str   VARCHAR2(500);
+        TYPE answercursor IS REF CURSOR;
+        acur       answercursor;
+        arec       answer%rowtype;
     BEGIN
-        FOR arec IN acur LOOP
+        IF answertitle_ IS NULL AND phone_ IS NULL AND answertext_ IS NULL THEN
+            exec_str := 'SELECT * FROM answer';
+        ELSE
+            exec_str := 'SELECT * FROM answer WHERE ';
+            IF answertitle_ IS NOT NULL THEN
+                exec_str := exec_str
+                            || 'instr(answer.answertitle, '''
+                            || answertitle_
+                            || ''') > 0 AND ';
+            END IF;
+
+            IF phone_ IS NOT NULL THEN
+                exec_str := exec_str
+                            || 'answer.PHONE='''
+                            || phone_
+                            || ''' AND ';
+            END IF;
+
+            IF answertext_ IS NOT NULL THEN
+                exec_str := exec_str
+                            || 'instr(answer.ANSWERTEXT, '''
+                            || answertext_
+                            || ''') > 0 AND ';
+            END IF;
+
+            exec_str := exec_str || '0=0';
+        END IF;
+
+        OPEN acur FOR exec_str;
+
+        LOOP
+            FETCH acur INTO arec;
+            EXIT WHEN acur%notfound;
             PIPE ROW ( arec );
         END LOOP;
-    END get_answer_by_title;
 
-    FUNCTION get_all_answers RETURN answer_tbl
-        PIPELINED
-    IS
-        CURSOR acur IS
-        SELECT
-            *
-        FROM
-            answer;
-
-    BEGIN
-        FOR arec IN acur LOOP
-            PIPE ROW ( arec );
-        END LOOP;
-    END get_all_answers;
-
-    FUNCTION get_answers_by_author (
-        phone_ answer.phone%TYPE
-    ) RETURN answer_tbl
-        PIPELINED
-    IS
-        CURSOR acur IS
-        SELECT
-            *
-        FROM
-            answer
-        WHERE
-            answer.phone = phone_;
-
-    BEGIN
-        FOR arec IN acur LOOP
-            PIPE ROW ( arec );
-        END LOOP;
-    END get_answers_by_author;
+    END filter_answers;
 
 END answer_handle;
 /

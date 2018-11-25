@@ -1,3 +1,4 @@
+-- RUN THIS SCRIPT AFTER TAG_HANDLE --
 CREATE SEQUENCE post_ids START WITH 5 INCREMENT BY 1 CACHE 2;
 
 CREATE OR REPLACE PACKAGE post_handle AS
@@ -8,7 +9,7 @@ CREATE OR REPLACE PACKAGE post_handle AS
         posttitle_   post.posttitle%TYPE,
         posttext_    post.posttext%TYPE,
         category_    post.categorytitle%TYPE
-    ) RETURN post.pid%type;
+    ) RETURN post.pid%TYPE;
 
     PROCEDURE edit_post (
         pid_         post.pid%TYPE,
@@ -40,15 +41,18 @@ CREATE OR REPLACE PACKAGE post_handle AS
     FUNCTION get_post (
         pid_ post.pid%TYPE
     ) RETURN post%rowtype;
-
-    FUNCTION get_post_by_title (
-        posttitle_ post.posttitle%TYPE
+        
+    FUNCTION filter_posts(
+        phone_ post.PHONE%TYPE,
+        posttitle_ post.posttitle%TYPE,
+        posttext_ post.POSTTEXT%TYPE,
+        category_ post.categorytitle%TYPE
     ) RETURN post_tbl
         PIPELINED;
 
-    FUNCTION get_post_by_category (
-        category_ post.categorytitle%TYPE
-    ) RETURN post_tbl
+    FUNCTION get_post_tags (
+        pid_ post.pid%TYPE
+    ) RETURN tag_handle.tag_tbl
         PIPELINED;
 
 END post_handle;
@@ -61,10 +65,10 @@ CREATE OR REPLACE PACKAGE BODY post_handle AS
         posttitle_   post.posttitle%TYPE,
         posttext_    post.posttext%TYPE,
         category_    post.categorytitle%TYPE
-    ) RETURN post.pid%type IS
-        new_id post.pid%type;
+    ) RETURN post.pid%TYPE IS
+        new_id   post.pid%TYPE;
     BEGIN
-        new_id := post_ids.NEXTVAL;
+        new_id := post_ids.nextval;
         INSERT INTO post (
             pid,
             phone,
@@ -82,7 +86,8 @@ CREATE OR REPLACE PACKAGE BODY post_handle AS
             current_timestamp,
             category_
         );
-        Return new_id;
+
+        RETURN new_id;
     END add_post;
 
     PROCEDURE edit_post (
@@ -181,44 +186,67 @@ CREATE OR REPLACE PACKAGE BODY post_handle AS
 
         RETURN prec;
     END get_post;
-
-    FUNCTION get_post_by_title (
-        posttitle_ post.posttitle%TYPE
-    ) RETURN post_tbl
-        PIPELINED
-    IS
-        CURSOR pcur IS
-        SELECT
-            *
-        FROM
-            post
-        WHERE
-            instr(post.posttitle, posttitle_) > 0;
-
-    BEGIN
-        FOR prec IN pcur LOOP
-            PIPE ROW ( prec );
-        END LOOP;
-    END get_post_by_title;
-
-    FUNCTION get_post_by_category (
+    
+    FUNCTION filter_posts(
+        phone_ post.PHONE%TYPE,
+        posttitle_ post.posttitle%TYPE,
+        posttext_ post.POSTTEXT%TYPE,
         category_ post.categorytitle%TYPE
     ) RETURN post_tbl
         PIPELINED
     IS
-        CURSOR pcur IS
-        SELECT
-            *
-        FROM
-            post
-        WHERE
-            post.categorytitle = category_;
-
+        exec_str varchar2(500);
+        TYPE PostCursor IS REF CURSOR;
+        pcur PostCursor;
+        prec post%rowtype;
     BEGIN
-        FOR prec IN pcur LOOP
+        IF phone_ IS NULL AND posttitle_ IS NULL AND posttext_ IS NULL AND category_ IS NULL THEN
+            exec_str := 'SELECT * FROM post';
+        ELSE 
+            exec_str := exec_str || 'SELECT * FROM post WHERE ';
+            IF phone_ IS NOT NULL THEN
+                exec_str := exec_str || 'post.PHONE=''' || phone_ || ''' AND ';
+            END IF;
+            IF posttitle_ IS NOT NULL THEN 
+                exec_str := exec_str || 'instr(post.posttitle, ''' || posttitle_ || ''') > 0 AND ';
+            END IF;
+            IF posttext_ IS NOT NULL THEN 
+                exec_str := exec_str || 'instr(post.POSTTEXT, ''' || posttext_ || ''') > 0 AND ';
+            END IF;
+            IF category_ IS NOT NULL THEN 
+                exec_str := exec_str || 'post.categorytitle=''' || category_ || ''' AND ';
+            END IF;
+            exec_str := exec_str || '0=0';
+        END IF;
+        
+        OPEN pcur FOR exec_str;
+
+        LOOP
+            FETCH pcur INTO prec;
+            EXIT WHEN pcur%notfound;
             PIPE ROW ( prec );
         END LOOP;
-    END get_post_by_category;
+        
+    END filter_posts;
+
+    FUNCTION get_post_tags (
+        pid_ post.pid%TYPE
+    ) RETURN tag_handle.tag_tbl
+        PIPELINED
+    IS
+        CURSOR tcur IS
+        SELECT
+            title
+        FROM
+            post_has_tags
+        WHERE
+            pid = pid_;
+
+    BEGIN
+        FOR trec IN tcur LOOP
+            PIPE ROW ( trec );
+        END LOOP;
+    END get_post_tags;
 
 END post_handle;
 /

@@ -13,12 +13,9 @@ CREATE OR REPLACE PACKAGE tag_handle AS
         title_ tag.title%TYPE
     ) RETURN tag%rowtype;
 
-    FUNCTION get_tags (
+    FUNCTION filter_tags (
         title_ tag.title%TYPE
     ) RETURN tag_tbl
-        PIPELINED;
-
-    FUNCTION get_all_tags RETURN tag_tbl
         PIPELINED;
 
 END tag_handle;
@@ -60,39 +57,32 @@ CREATE OR REPLACE PACKAGE BODY tag_handle AS
         RETURN trec;
     END get_tag;
 
-    FUNCTION get_tags (
+    FUNCTION filter_tags (
         title_ tag.title%TYPE
     ) RETURN tag_tbl
         PIPELINED
     IS
-        CURSOR tcur IS
-        SELECT
-            title
-        FROM
-            tag
-        WHERE
-            instr(tag.title, title_) > 0;
-
+        exec_str   VARCHAR2(500);
+        TYPE tagcursor IS REF CURSOR;
+        tcur       tagcursor;
+        trec       tag%rowtype;
     BEGIN
-        FOR trec IN tcur LOOP
+        IF title_ IS NULL THEN
+            exec_str := 'SELECT * FROM tag';
+        ELSE
+            exec_str := 'SELECT * FROM tag WHERE instr(tag.title, '''
+                        || title_
+                        || ''') > 0';
+        END IF;
+
+        OPEN tcur FOR exec_str;
+
+        LOOP
+            FETCH tcur INTO trec;
+            EXIT WHEN tcur%notfound;
             PIPE ROW ( trec );
         END LOOP;
-    END get_tags;
-
-    FUNCTION get_all_tags RETURN tag_tbl
-        PIPELINED
-    IS
-        CURSOR tcur IS
-        SELECT
-            title
-        FROM
-            tag;
-
-    BEGIN
-        FOR trec IN tcur LOOP
-            PIPE ROW ( trec );
-        END LOOP;
-    END get_all_tags;
+    END filter_tags;
 
 END tag_handle;
 /

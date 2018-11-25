@@ -2,7 +2,6 @@
 CREATE OR REPLACE PACKAGE user_handle AS
     TYPE users_tbl IS
         TABLE OF users%rowtype;
-
     PROCEDURE add_user (
         phone_      IN          users.phone%TYPE,
         rolename_   IN          users.rolename%TYPE,
@@ -11,6 +10,7 @@ CREATE OR REPLACE PACKAGE user_handle AS
     );
 
     PROCEDURE edit_user (
+        phone_      IN          users.phone%TYPE,
         rolename_   IN          users.rolename%TYPE,
         name_       IN          users.name%TYPE,
         email_      IN          users.email%TYPE
@@ -19,8 +19,6 @@ CREATE OR REPLACE PACKAGE user_handle AS
     PROCEDURE delete_user (
         phone_   IN       users.phone%TYPE
     );
-    
-    FUNCTION get_all_users RETURN users_tbl PIPELINED;
 
     FUNCTION get_user (
         phone_   IN       users.phone%TYPE
@@ -30,13 +28,10 @@ CREATE OR REPLACE PACKAGE user_handle AS
         email_ users.email%TYPE
     ) RETURN users%rowtype;
 
-    FUNCTION get_user_by_name (
-        name_ users.name%TYPE
-    ) RETURN users_tbl
-        PIPELINED;
-
-    FUNCTION get_user_by_rolename (
-        rolename_ users.rolename%TYPE
+    FUNCTION filter_users (
+        rolename_   users.rolename%TYPE,
+        name_       users.name%TYPE,
+        email_      users.email%TYPE
     ) RETURN users_tbl
         PIPELINED;
 
@@ -69,6 +64,7 @@ CREATE OR REPLACE PACKAGE BODY user_handle AS
     END add_user;
 
     PROCEDURE edit_user (
+        phone_      IN          users.phone%TYPE,
         rolename_   IN          users.rolename%TYPE,
         name_       IN          users.name%TYPE,
         email_      IN          users.email%TYPE
@@ -93,21 +89,6 @@ CREATE OR REPLACE PACKAGE BODY user_handle AS
             phone = phone_;
 
     END;
-    
-    FUNCTION get_all_users RETURN users_tbl PIPELINED
-    IS
-        CURSOR ucur IS
-        SELECT
-            *
-        FROM
-            users;
-
-        urec   ucur%rowtype;
-    begin
-        FOR urec IN ucur LOOP
-            PIPE ROW ( urec );
-        END LOOP;
-    end get_all_users;
 
     FUNCTION get_user (
         phone_   IN       users.phone%TYPE
@@ -141,45 +122,54 @@ CREATE OR REPLACE PACKAGE BODY user_handle AS
         RETURN urec;
     END get_user_by_email;
 
-    FUNCTION get_user_by_name (
-        name_ users.name%TYPE
+    FUNCTION filter_users (
+        rolename_   users.rolename%TYPE,
+        name_       users.name%TYPE,
+        email_      users.email%TYPE
     ) RETURN users_tbl
         PIPELINED
     IS
-
-        CURSOR ucur IS
-        SELECT
-            *
-        FROM
-            users
-        WHERE
-            instr(users.name, name_) > 0;
-
-        urec   ucur%rowtype;
+        exec_str   VARCHAR2(500);
+        TYPE userscursor IS REF CURSOR;
+        ucur       userscursor;
+        urec       users%rowtype;
     BEGIN
-        FOR urec IN ucur LOOP
+        IF rolename_ IS NULL AND name_ IS NULL AND email_ IS NULL THEN
+            exec_str := 'SELECT * FROM users';
+        ELSE
+            exec_str := 'SELECT * FROM users WHERE ';
+            IF rolename_ IS NOT NULL THEN
+                exec_str := exec_str
+                            || 'users.ROLENAME='''
+                            || rolename_
+                            || ''' AND ';
+            END IF;
+
+            IF name_ IS NOT NULL THEN
+                exec_str := exec_str
+                            || 'instr(users.name, '''
+                            || name_
+                            || ''') > 0 AND ';
+            END IF;
+
+            IF email_ IS NOT NULL THEN
+                exec_str := exec_str
+                            || 'instr(users.email, '''
+                            || email_
+                            || ''') > 0 AND ';
+            END IF;
+
+            exec_str := exec_str || '0=0';
+        END IF;
+
+        OPEN ucur FOR exec_str;
+
+        LOOP
+            FETCH ucur INTO urec;
+            EXIT WHEN ucur%notfound;
             PIPE ROW ( urec );
         END LOOP;
-    END get_user_by_name;
 
-    FUNCTION get_user_by_rolename (
-        rolename_ users.rolename%TYPE
-    ) RETURN users_tbl
-        PIPELINED
-    IS
-        CURSOR ucur IS
-        SELECT
-            *
-        FROM
-            users
-        WHERE
-            users.rolename = rolename_;
-
-        urec   ucur%rowtype;
-    BEGIN
-        FOR urec IN ucur LOOP
-            PIPE ROW ( urec );
-        END LOOP;
-    END get_user_by_rolename;
+    END filter_users;
 
 END user_handle;
