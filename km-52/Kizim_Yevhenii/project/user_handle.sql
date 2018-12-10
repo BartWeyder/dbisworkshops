@@ -3,129 +3,126 @@ CREATE OR REPLACE PACKAGE user_handle AS
     TYPE users_tbl IS
         TABLE OF users%rowtype;
     PROCEDURE add_user (
-        phone_      IN          users.phone%TYPE,
+        user_id_    IN          users.user_id%TYPE,
         rolename_   IN          users.rolename%TYPE,
         name_       IN          users.name%TYPE,
-        email_      IN          users.email%TYPE
+        hash_ IN varchar2
     );
 
     PROCEDURE edit_user (
-        phone_      IN          users.phone%TYPE,
+        user_id_    IN          users.user_id%TYPE,
         rolename_   IN          users.rolename%TYPE,
-        name_       IN          users.name%TYPE,
-        email_      IN          users.email%TYPE
+        name_       IN          users.name%TYPE
     );
 
     PROCEDURE delete_user (
-        phone_   IN       users.phone%TYPE
+        user_id_   IN         users.user_id%TYPE
+    );
+    
+    PROCEDURE update_hash (
+        user_id_   IN         users.user_id%TYPE,
+        hash_ IN varchar2
     );
 
     FUNCTION get_user (
-        phone_   IN       users.phone%TYPE
-    ) RETURN users%rowtype;
-
-    FUNCTION get_user_by_email (
-        email_ users.email%TYPE
-    ) RETURN users%rowtype;
+        user_id_   IN         users.user_id%TYPE
+    ) RETURN SYS_REFCURSOR;
 
     FUNCTION filter_users (
         rolename_   users.rolename%TYPE,
         name_       users.name%TYPE,
-        email_      users.email%TYPE
+        hash_       varchar2
     ) RETURN users_tbl
         PIPELINED;
-
+        
+    FUNCTION get_hash (
+        id_ users.user_id%type
+    ) RETURN varchar2;
+    
+    
 END user_handle;
 /
 
 CREATE OR REPLACE PACKAGE BODY user_handle AS
 
     PROCEDURE add_user (
-        phone_      IN          users.phone%TYPE,
+        user_id_    IN          users.user_id%TYPE,
         rolename_   IN          users.rolename%TYPE,
         name_       IN          users.name%TYPE,
-        email_      IN          users.email%TYPE
+        hash_       IN          varchar2
     ) IS
     BEGIN
         INSERT INTO users (
-            phone,
+            user_id,
             rolename,
             name,
-            email,
+            user_hash,
             usercreatedtime
         ) VALUES (
-            phone_,
+            user_id_,
             rolename_,
             name_,
-            email_,
+            hextoraw(hash_),
             current_timestamp
         );
 
     END add_user;
 
     PROCEDURE edit_user (
-        phone_      IN          users.phone%TYPE,
+        user_id_    IN          users.user_id%TYPE,
         rolename_   IN          users.rolename%TYPE,
-        name_       IN          users.name%TYPE,
-        email_      IN          users.email%TYPE
+        name_       IN          users.name%TYPE
     ) IS
     BEGIN
         UPDATE users
         SET
             rolename = rolename_,
-            name = name_,
-            email = email_
+            name = name_
         WHERE
-            phone = phone_;
+            user_id = user_id_;
 
     END edit_user;
 
     PROCEDURE delete_user (
-        phone_   IN       users.phone%TYPE
+        user_id_   IN         users.user_id%TYPE
     ) IS
     BEGIN
         DELETE FROM users
         WHERE
-            phone = phone_;
+            user_id = user_id_;
 
-    END;
+    END delete_user;
+    
+    PROCEDURE update_hash (
+        user_id_   IN         users.user_id%TYPE,
+        hash_ IN varchar2
+    ) IS
+    BEGIN
+        UPDATE USERS
+        SET user_hash=hash_
+        WHERE user_id = user_id_;
+    
+    END update_hash;
 
     FUNCTION get_user (
-        phone_   IN       users.phone%TYPE
-    ) RETURN users%rowtype IS
-        urec   users%rowtype;
+        user_id_   IN         users.user_id%TYPE
+    ) RETURN SYS_REFCURSOR IS
+        user_row   SYS_REFCURSOR;
     BEGIN
-        SELECT
-            *
-        INTO urec
-        FROM
-            users
-        WHERE
-            phone = phone_;
+        OPEN user_row FOR SELECT
+                              *
+                          FROM
+                              users
+                          WHERE
+                              user_id = user_id_;
 
-        RETURN urec;
+        RETURN user_row;
     END get_user;
-
-    FUNCTION get_user_by_email (
-        email_ users.email%TYPE
-    ) RETURN users%rowtype IS
-        urec   users%rowtype;
-    BEGIN
-        SELECT
-            *
-        INTO urec
-        FROM
-            users
-        WHERE
-            users.email = email_;
-
-        RETURN urec;
-    END get_user_by_email;
 
     FUNCTION filter_users (
         rolename_   users.rolename%TYPE,
         name_       users.name%TYPE,
-        email_      users.email%TYPE
+        hash_       varchar2
     ) RETURN users_tbl
         PIPELINED
     IS
@@ -134,7 +131,7 @@ CREATE OR REPLACE PACKAGE BODY user_handle AS
         ucur       userscursor;
         urec       users%rowtype;
     BEGIN
-        IF rolename_ IS NULL AND name_ IS NULL AND email_ IS NULL THEN
+        IF rolename_ IS NULL AND name_ IS NULL AND hash_ IS NULL THEN
             exec_str := 'SELECT * FROM users';
         ELSE
             exec_str := 'SELECT * FROM users WHERE ';
@@ -151,12 +148,12 @@ CREATE OR REPLACE PACKAGE BODY user_handle AS
                             || name_
                             || ''') > 0 AND ';
             END IF;
-
-            IF email_ IS NOT NULL THEN
+            
+            IF hash_ IS NOT NULL THEN
                 exec_str := exec_str
-                            || 'instr(users.email, '''
-                            || email_
-                            || ''') > 0 AND ';
+                            || 'user_hash=UPPER('''
+                            || hash_
+                            || ''') AND ';
             END IF;
 
             exec_str := exec_str || '0=0';
@@ -171,5 +168,16 @@ CREATE OR REPLACE PACKAGE BODY user_handle AS
         END LOOP;
 
     END filter_users;
+    
+    FUNCTION get_hash (
+        id_ users.user_id%type
+    ) RETURN varchar2
+    IS
+        hash_ varchar2(64);
+    BEGIN
+        select user_hash into hash_ from users
+        where user_id = id_;
+        RETURN hash_;
+    END get_hash;
 
 END user_handle;

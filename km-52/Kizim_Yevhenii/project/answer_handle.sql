@@ -4,7 +4,7 @@ CREATE OR REPLACE PACKAGE answer_handle AS
     TYPE answer_tbl IS
         TABLE OF answer%rowtype;
     FUNCTION add_answer (
-        phone_         answer.phone%TYPE,
+        user_id_       answer.user_id%TYPE,
         pid_           answer.pid%TYPE,
         answertitle_   answer.answertitle%TYPE,
         answertext_    answer.answertext%TYPE
@@ -26,7 +26,7 @@ CREATE OR REPLACE PACKAGE answer_handle AS
 
     FUNCTION filter_answers (
         answertitle_   answer.answertitle%TYPE,
-        phone_         answer.phone%TYPE,
+        user_id_       answer.user_id%TYPE,
         answertext_    answer.answertext%TYPE
     ) RETURN answer_tbl
         PIPELINED;
@@ -37,7 +37,7 @@ END answer_handle;
 CREATE OR REPLACE PACKAGE BODY answer_handle AS
 
     FUNCTION add_answer (
-        phone_         answer.phone%TYPE,
+        user_id_       answer.user_id%TYPE,
         pid_           answer.pid%TYPE,
         answertitle_   answer.answertitle%TYPE,
         answertext_    answer.answertext%TYPE
@@ -47,14 +47,14 @@ CREATE OR REPLACE PACKAGE BODY answer_handle AS
         aid_ := answer_ids.nextval;
         INSERT INTO answer (
             aid,
-            phone,
+            user_id,
             pid,
             answertitle,
             answertext,
             answercreatedtime
         ) VALUES (
             aid_,
-            phone_,
+            user_id_,
             pid_,
             answertitle_,
             answertext_,
@@ -113,7 +113,7 @@ CREATE OR REPLACE PACKAGE BODY answer_handle AS
 
     FUNCTION filter_answers (
         answertitle_   answer.answertitle%TYPE,
-        phone_         answer.phone%TYPE,
+        user_id_       answer.user_id%TYPE,
         answertext_    answer.answertext%TYPE
     ) RETURN answer_tbl
         PIPELINED
@@ -123,7 +123,7 @@ CREATE OR REPLACE PACKAGE BODY answer_handle AS
         acur       answercursor;
         arec       answer%rowtype;
     BEGIN
-        IF answertitle_ IS NULL AND phone_ IS NULL AND answertext_ IS NULL THEN
+        IF answertitle_ IS NULL AND user_id_ IS NULL AND answertext_ IS NULL THEN
             exec_str := 'SELECT * FROM answer';
         ELSE
             exec_str := 'SELECT * FROM answer WHERE ';
@@ -134,10 +134,10 @@ CREATE OR REPLACE PACKAGE BODY answer_handle AS
                             || ''') > 0 AND ';
             END IF;
 
-            IF phone_ IS NOT NULL THEN
+            IF user_id_ IS NOT NULL THEN
                 exec_str := exec_str
-                            || 'answer.PHONE='''
-                            || phone_
+                            || 'answer.user_id='''
+                            || user_id_
                             || ''' AND ';
             END IF;
 

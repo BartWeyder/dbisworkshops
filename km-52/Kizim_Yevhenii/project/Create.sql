@@ -2,69 +2,60 @@
 /* DBMS name:      ORACLE Version 11g                           */
 /* Created on:     01-Nov-18 23:48:24                           */
 /*==============================================================*/
+ALTER TABLE answer DROP CONSTRAINT fk_answer_post_has__post;
 
+ALTER TABLE answer DROP CONSTRAINT fk_answer_user_has__user;
 
-alter table ANSWER
-   drop constraint FK_ANSWER_POST_HAS__POST;
+ALTER TABLE post DROP CONSTRAINT fk_post_post_has__category;
 
-alter table ANSWER
-   drop constraint FK_ANSWER_USER_HAS__USER;
+ALTER TABLE post DROP CONSTRAINT fk_post_user_has__user;
 
-alter table POST
-   drop constraint FK_POST_POST_HAS__CATEGORY;
+ALTER TABLE post_has_tags DROP CONSTRAINT fk_post_has_post_has__post;
 
-alter table POST
-   drop constraint FK_POST_USER_HAS__USER;
+ALTER TABLE post_has_tags DROP CONSTRAINT fk_post_has_post_has__tag;
 
-alter table POST_HAS_TAGS
-   drop constraint FK_POST_HAS_POST_HAS__POST;
+ALTER TABLE users DROP CONSTRAINT fk_user_user_has__role;
 
-alter table POST_HAS_TAGS
-   drop constraint FK_POST_HAS_POST_HAS__TAG;
+DROP INDEX post_has_answer_fk;
 
-alter table USERS
-   drop constraint FK_USER_USER_HAS__ROLE;
+DROP INDEX user_has_answers_fk;
 
-drop index POST_HAS_ANSWER_FK;
+DROP TABLE answer CASCADE CONSTRAINTS;
 
-drop index USER_HAS_ANSWERS_FK;
+DROP TABLE category CASCADE CONSTRAINTS;
 
-drop table ANSWER cascade constraints;
+DROP INDEX post_has_category_fk;
 
-drop table CATEGORY cascade constraints;
+DROP INDEX user_has_posts_fk;
 
-drop index POST_HAS_CATEGORY_FK;
+DROP TABLE post CASCADE CONSTRAINTS;
 
-drop index USER_HAS_POSTS_FK;
+DROP INDEX post_has_tags_fk;
 
-drop table POST cascade constraints;
+DROP INDEX post_has_tags2_fk;
 
-drop index POST_HAS_TAGS_FK;
+DROP TABLE post_has_tags CASCADE CONSTRAINTS;
 
-drop index POST_HAS_TAGS2_FK;
+DROP TABLE role CASCADE CONSTRAINTS;
 
-drop table POST_HAS_TAGS cascade constraints;
+DROP TABLE tag CASCADE CONSTRAINTS;
 
-drop table ROLE cascade constraints;
+DROP INDEX user_has_role_fk;
 
-drop table TAG cascade constraints;
-
-drop index USER_HAS_ROLE_FK;
-
-drop table USERS cascade constraints;
+DROP TABLE users CASCADE CONSTRAINTS;
 
 /*==============================================================*/
 /* Table: ANSWER                                                */
 /*==============================================================*/
-create table ANSWER 
-(
-   AID                  INTEGER              not null,
-   PHONE                VARCHAR2(30)         not null,
-   PID                  INTEGER              not null,
-   ANSWERTITLE          VARCHAR2(256)                ,
-   ANSWERTEXT           VARCHAR2(2000)       not null,
-   ANSWERCREATEDTIME    DATE                 not null,
-   constraint PK_ANSWER primary key (AID)
+
+CREATE TABLE answer (
+    aid                 INTEGER NOT NULL,
+    user_id             INTEGER NOT NULL,
+    pid                 INTEGER NOT NULL,
+    answertitle         VARCHAR2(256),
+    answertext          VARCHAR2(2000) NOT NULL,
+    answercreatedtime   DATE NOT NULL,
+    CONSTRAINT pk_answer PRIMARY KEY ( aid )
 );
 
 /*==============================================================*/
@@ -84,25 +75,25 @@ create table ANSWER
 /*==============================================================*/
 /* Table: CATEGORY                                              */
 /*==============================================================*/
-create table CATEGORY 
-(
-   CATEGORYTITLE        VARCHAR(40)             not null,
-   constraint PK_CATEGORY primary key (CATEGORYTITLE)
+
+CREATE TABLE category (
+    categorytitle   VARCHAR(40) NOT NULL,
+    CONSTRAINT pk_category PRIMARY KEY ( categorytitle )
 );
 
 /*==============================================================*/
 /* Table: POST                                                  */
 /*==============================================================*/
-create table POST 
-(
-   PID                  INTEGER              not null,
-   PHONE                VARCHAR2(30)         not null,
-   POSTTITLE            VARCHAR2(256)        not null,
-   POSTTEXT             VARCHAR2(2000)       not null,
-   PUBLISHED            SMALLINT             not null,
-   POSTCREATEDTIME      DATE                 not null,
-   CATEGORYTITLE        VARCHAR(40)             not null,
-   constraint PK_POST primary key (PID)
+
+CREATE TABLE post (
+    pid               INTEGER NOT NULL,
+    user_id           INTEGER NOT NULL,
+    posttitle         VARCHAR2(256) NOT NULL,
+    posttext          VARCHAR2(2000) NOT NULL,
+    published         SMALLINT NOT NULL,
+    postcreatedtime   DATE NOT NULL,
+    categorytitle     VARCHAR(40) NOT NULL,
+    CONSTRAINT pk_post PRIMARY KEY ( pid )
 );
 
 /*==============================================================*/
@@ -122,11 +113,12 @@ create table POST
 /*==============================================================*/
 /* Table: POST_HAS_TAGS                                         */
 /*==============================================================*/
-create table POST_HAS_TAGS 
-(
-   PID                  INTEGER              not null,
-   TITLE                VARCHAR(40)             not null,
-   constraint PK_POST_HAS_TAGS primary key (PID, TITLE)
+
+CREATE TABLE post_has_tags (
+    pid     INTEGER NOT NULL,
+    title   VARCHAR(40) NOT NULL,
+    CONSTRAINT pk_post_has_tags PRIMARY KEY ( pid,
+                                              title )
 );
 
 /*==============================================================*/
@@ -146,32 +138,32 @@ create table POST_HAS_TAGS
 /*==============================================================*/
 /* Table: ROLE                                                  */
 /*==============================================================*/
-create table ROLE 
-(
-   ROLENAME             VARCHAR(20)             not null,
-   constraint PK_ROLE primary key (ROLENAME)
+
+CREATE TABLE role (
+    rolename   VARCHAR(20) NOT NULL,
+    CONSTRAINT pk_role PRIMARY KEY ( rolename )
 );
 
 /*==============================================================*/
 /* Table: TAG                                                   */
 /*==============================================================*/
-create table TAG 
-(
-   TITLE                VARCHAR(40)             not null,
-   constraint PK_TAG primary key (TITLE)
+
+CREATE TABLE tag (
+    title   VARCHAR(40) NOT NULL,
+    CONSTRAINT pk_tag PRIMARY KEY ( title )
 );
 
 /*==============================================================*/
 /* Table: USERS                                                */
 /*==============================================================*/
-create table USERS 
-(
-   PHONE                VARCHAR2(30)         not null,
-   ROLENAME             VARCHAR(20)          not null,
-   NAME                 VARCHAR2(100)        not null,
-   EMAIL                VARCHAR2(60)         UNIQUE,
-   USERCREATEDTIME      DATE                 not null,
-   constraint PK_USER primary key (PHONE)
+
+CREATE TABLE users (
+    user_id           INTEGER NOT NULL,
+    rolename          VARCHAR(20) NOT NULL,
+    name              VARCHAR2(100) NOT NULL,
+    user_hash         RAW(64),
+    usercreatedtime   DATE NOT NULL,
+    CONSTRAINT pk_user PRIMARY KEY ( user_id )
 );
 
 /*==============================================================*/
@@ -181,60 +173,62 @@ create table USERS
 --   ROLENAME ASC
 --);
 
-alter table ANSWER
-   add constraint FK_ANSWER_POST_HAS__POST foreign key (PID)
-      references POST (PID);
+ALTER TABLE answer
+    ADD CONSTRAINT fk_answer_post_has__post FOREIGN KEY ( pid )
+        REFERENCES post ( pid );
 
-alter table ANSWER
-   add constraint FK_ANSWER_USER_HAS__USER foreign key (PHONE)
-      references USERS (PHONE);
+ALTER TABLE answer
+    ADD CONSTRAINT fk_answer_user_has__user FOREIGN KEY ( user_id )
+        REFERENCES users ( user_id );
 
-alter table POST
-   add constraint FK_POST_POST_HAS__CATEGORY foreign key (CATEGORYTITLE)
-      references CATEGORY (CATEGORYTITLE);
+ALTER TABLE post
+    ADD CONSTRAINT fk_post_post_has__category FOREIGN KEY ( categorytitle )
+        REFERENCES category ( categorytitle );
 
-alter table POST
-   add constraint FK_POST_USER_HAS__USER foreign key (PHONE)
-      references USERS (PHONE);
+ALTER TABLE post
+    ADD CONSTRAINT fk_post_user_has__user FOREIGN KEY ( user_id )
+        REFERENCES users ( user_id );
 
-alter table POST_HAS_TAGS
-   add constraint FK_POST_HAS_POST_HAS__POST foreign key (PID)
-      references POST (PID);
+ALTER TABLE post_has_tags
+    ADD CONSTRAINT fk_post_has_post_has__post FOREIGN KEY ( pid )
+        REFERENCES post ( pid );
 
-alter table POST_HAS_TAGS
-   add constraint FK_POST_HAS_POST_HAS__TAG foreign key (TITLE)
-      references TAG (TITLE);
+ALTER TABLE post_has_tags
+    ADD CONSTRAINT fk_post_has_post_has__tag FOREIGN KEY ( title )
+        REFERENCES tag ( title );
 
-alter table USERS
-   add constraint FK_USER_USER_HAS__ROLE foreign key (ROLENAME)
-      references ROLE (ROLENAME);
+ALTER TABLE users
+    ADD CONSTRAINT fk_user_user_has__role FOREIGN KEY ( rolename )
+        REFERENCES role ( rolename );
 
-alter table answer 
-    add constraint ANSWER_TITLE_CHECK check(REGEXP_LIKE(ANSWERTITLE, '^[A-z ,!.-]{0,526}$'));
+ALTER TABLE answer
+    ADD CONSTRAINT answer_title_check CHECK ( REGEXP_LIKE ( answertitle,
+                                                            '^[A-z ,!.-]{0,526}$' ) );
 
-alter table answer 
-    add constraint ANSWER_TEXT_CHECK check(REGEXP_LIKE(ANSWERTEXT, '^[A-Za-z0-9 ;—–.,!?+<>\/-]{5,2000}$'));
-    
-alter table CATEGORY 
-    add constraint CATEGORY_NAME_CHECK check(REGEXP_LIKE(CATEGORYTITLE, '^[A-z -]{1,40}$'));
-    
-alter table post 
-    add constraint POST_TITLE_CHECK check(REGEXP_LIKE(POSTTITLE, '^[A-z ,!.-]{5,526}$'));
+ALTER TABLE answer
+    ADD CONSTRAINT answer_text_check CHECK ( REGEXP_LIKE ( answertext,
+                                                           '^[A-Za-z0-9 ;—–.,!?+<>\/-]{5,2000}$' ) );
 
-alter table post 
-    add constraint POST_TEXT_CHECK check(REGEXP_LIKE(POSTTEXT, '^[A-Za-z0-9 ;—–.,!?+<>\/-]{5,2000}$'));
-    
-alter table role  
-    add constraint ROLE_NAME_CHECK check(REGEXP_LIKE(ROLENAME, '^[A-Za-z]{1,20}$'));
+ALTER TABLE category
+    ADD CONSTRAINT category_name_check CHECK ( REGEXP_LIKE ( categorytitle,
+                                                             '^[A-z -]{1,40}$' ) );
 
-alter table TAG  
-    add constraint TITLE_CHECK check(REGEXP_LIKE(TITLE, '^[A-Za-z -]{1,20}$'));
-    
-alter table USERS
-    add constraint PHONE_CHECK check(REGEXP_LIKE(PHONE, '^(\+[0-9]{1,3}|0)[0-9]{3}( ){0,1}[0-9]{7,8}$'));
+ALTER TABLE post
+    ADD CONSTRAINT post_title_check CHECK ( REGEXP_LIKE ( posttitle,
+                                                          '^[A-z ,!.-]{5,526}$' ) );
 
-alter table USERS
-    add constraint NAME_CHECK check(REGEXP_LIKE(NAME, '^[A-Za-z -]{5,100}$'));
+ALTER TABLE post
+    ADD CONSTRAINT post_text_check CHECK ( REGEXP_LIKE ( posttext,
+                                                         '^[A-Za-z0-9 ;—–.,!?+<>\/-]{5,2000}$' ) );
 
-alter table USERS
-    add constraint EMAIL_CHECK check(REGEXP_LIKE(EMAIL, '^([A-Z|a-z|0-9](\.|_){0,1})+[A-Z|a-z|0-9]\@([A-Z|a-z|0-9])+((\.){0,1}[A-Z|a-z|0-9]){2}\.[a-z]{2,3}$'));
+ALTER TABLE role
+    ADD CONSTRAINT role_name_check CHECK ( REGEXP_LIKE ( rolename,
+                                                         '^[A-Za-z]{1,20}$' ) );
+
+ALTER TABLE tag
+    ADD CONSTRAINT title_check CHECK ( REGEXP_LIKE ( title,
+                                                     '^[A-Za-z -]{1,20}$' ) );
+
+ALTER TABLE users
+    ADD CONSTRAINT name_check CHECK ( REGEXP_LIKE ( name,
+                                                    '^[A-Za-z -]{5,100}$' ) );

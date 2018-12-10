@@ -5,7 +5,7 @@ CREATE OR REPLACE PACKAGE post_handle AS
     TYPE post_tbl IS
         TABLE OF post%rowtype;
     FUNCTION add_post (
-        phone_       post.phone%TYPE,
+        user_id_         post.user_id%TYPE,
         posttitle_   post.posttitle%TYPE,
         posttext_    post.posttext%TYPE,
         category_    post.categorytitle%TYPE
@@ -41,12 +41,12 @@ CREATE OR REPLACE PACKAGE post_handle AS
     FUNCTION get_post (
         pid_ post.pid%TYPE
     ) RETURN post%rowtype;
-        
-    FUNCTION filter_posts(
-        phone_ post.PHONE%TYPE,
-        posttitle_ post.posttitle%TYPE,
-        posttext_ post.POSTTEXT%TYPE,
-        category_ post.categorytitle%TYPE
+
+    FUNCTION filter_posts (
+        user_id_         post.user_id%TYPE,
+        posttitle_   post.posttitle%TYPE,
+        posttext_    post.posttext%TYPE,
+        category_    post.categorytitle%TYPE
     ) RETURN post_tbl
         PIPELINED;
 
@@ -61,7 +61,7 @@ END post_handle;
 CREATE OR REPLACE PACKAGE BODY post_handle AS
 
     FUNCTION add_post (
-        phone_       post.phone%TYPE,
+        user_id_         post.user_id%TYPE,
         posttitle_   post.posttitle%TYPE,
         posttext_    post.posttext%TYPE,
         category_    post.categorytitle%TYPE
@@ -71,7 +71,7 @@ CREATE OR REPLACE PACKAGE BODY post_handle AS
         new_id := post_ids.nextval;
         INSERT INTO post (
             pid,
-            phone,
+            user_id,
             posttitle,
             posttext,
             published,
@@ -79,7 +79,7 @@ CREATE OR REPLACE PACKAGE BODY post_handle AS
             categorytitle
         ) VALUES (
             new_id,
-            phone_,
+            user_id_,
             posttitle_,
             posttext_,
             0,
@@ -186,39 +186,55 @@ CREATE OR REPLACE PACKAGE BODY post_handle AS
 
         RETURN prec;
     END get_post;
-    
-    FUNCTION filter_posts(
-        phone_ post.PHONE%TYPE,
-        posttitle_ post.posttitle%TYPE,
-        posttext_ post.POSTTEXT%TYPE,
-        category_ post.categorytitle%TYPE
+
+    FUNCTION filter_posts (
+        user_id_         post.user_id%TYPE,
+        posttitle_   post.posttitle%TYPE,
+        posttext_    post.posttext%TYPE,
+        category_    post.categorytitle%TYPE
     ) RETURN post_tbl
         PIPELINED
     IS
-        exec_str varchar2(500);
-        TYPE PostCursor IS REF CURSOR;
-        pcur PostCursor;
-        prec post%rowtype;
+        exec_str   VARCHAR2(500);
+        TYPE postcursor IS REF CURSOR;
+        pcur       postcursor;
+        prec       post%rowtype;
     BEGIN
-        IF phone_ IS NULL AND posttitle_ IS NULL AND posttext_ IS NULL AND category_ IS NULL THEN
+        IF user_id_ IS NULL AND posttitle_ IS NULL AND posttext_ IS NULL AND category_ IS NULL THEN
             exec_str := 'SELECT * FROM post';
-        ELSE 
+        ELSE
             exec_str := exec_str || 'SELECT * FROM post WHERE ';
-            IF phone_ IS NOT NULL THEN
-                exec_str := exec_str || 'post.PHONE=''' || phone_ || ''' AND ';
+            IF user_id_ IS NOT NULL THEN
+                exec_str := exec_str
+                            || 'post.user_id='''
+                            || user_id_
+                            || ''' AND ';
             END IF;
-            IF posttitle_ IS NOT NULL THEN 
-                exec_str := exec_str || 'instr(post.posttitle, ''' || posttitle_ || ''') > 0 AND ';
+
+            IF posttitle_ IS NOT NULL THEN
+                exec_str := exec_str
+                            || 'instr(post.posttitle, '''
+                            || posttitle_
+                            || ''') > 0 AND ';
             END IF;
-            IF posttext_ IS NOT NULL THEN 
-                exec_str := exec_str || 'instr(post.POSTTEXT, ''' || posttext_ || ''') > 0 AND ';
+
+            IF posttext_ IS NOT NULL THEN
+                exec_str := exec_str
+                            || 'instr(post.POSTTEXT, '''
+                            || posttext_
+                            || ''') > 0 AND ';
             END IF;
-            IF category_ IS NOT NULL THEN 
-                exec_str := exec_str || 'post.categorytitle=''' || category_ || ''' AND ';
+
+            IF category_ IS NOT NULL THEN
+                exec_str := exec_str
+                            || 'post.categorytitle='''
+                            || category_
+                            || ''' AND ';
             END IF;
+
             exec_str := exec_str || '0=0';
         END IF;
-        
+
         OPEN pcur FOR exec_str;
 
         LOOP
@@ -226,7 +242,7 @@ CREATE OR REPLACE PACKAGE BODY post_handle AS
             EXIT WHEN pcur%notfound;
             PIPE ROW ( prec );
         END LOOP;
-        
+
     END filter_posts;
 
     FUNCTION get_post_tags (

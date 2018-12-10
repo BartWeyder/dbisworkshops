@@ -53,7 +53,7 @@ end;
 -- end --
 -- Manage Users -- 
 -- Outputs users -- 
-select * from TABLE(user_handle.get_user_by_name('S'));
+select * from TABLE(user_handle.filter_users(NULL, NULL, NULL));
 
 -- Manage Tags --
 select * from TABLE(tag_handle.get_all_tags);

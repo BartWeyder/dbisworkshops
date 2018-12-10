@@ -5,11 +5,11 @@ CREATE TRIGGER user_deletion BEFORE
 BEGIN
     DELETE answer
     WHERE
-        phone = :old.phone;
+        user_id = :old.user_id;
 
     DELETE post
     WHERE
-        phone = :old.phone;
+        user_id = :old.user_id;
 
 END;
 
