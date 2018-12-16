@@ -74,6 +74,8 @@ CREATE OR REPLACE PACKAGE BODY tag_handle AS
                         || title_
                         || ''') > 0';
         END IF;
+        
+        exec_str := exec_str || ' ORDER BY TITLE ASC';
 
         OPEN tcur FOR exec_str;
 

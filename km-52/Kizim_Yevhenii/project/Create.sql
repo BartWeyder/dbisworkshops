@@ -163,6 +163,7 @@ CREATE TABLE users (
     name              VARCHAR2(100) NOT NULL,
     user_hash         RAW(64),
     usercreatedtime   DATE NOT NULL,
+    status            INTEGER DEFAULT 1 NOT NULL,
     CONSTRAINT pk_user PRIMARY KEY ( user_id )
 );
 

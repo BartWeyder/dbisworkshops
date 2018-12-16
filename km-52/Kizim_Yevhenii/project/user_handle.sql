@@ -12,7 +12,8 @@ CREATE OR REPLACE PACKAGE user_handle AS
     PROCEDURE edit_user (
         user_id_    IN          users.user_id%TYPE,
         rolename_   IN          users.rolename%TYPE,
-        name_       IN          users.name%TYPE
+        name_       IN          users.name%TYPE,
+        status_     IN          users.status%TYPE
     );
 
     PROCEDURE delete_user (
@@ -22,6 +23,10 @@ CREATE OR REPLACE PACKAGE user_handle AS
     PROCEDURE update_hash (
         user_id_   IN         users.user_id%TYPE,
         hash_ IN varchar2
+    );
+    
+    PROCEDURE block_user (
+        user_id_ IN           users.user_id%TYPE
     );
 
     FUNCTION get_user (
@@ -71,13 +76,15 @@ CREATE OR REPLACE PACKAGE BODY user_handle AS
     PROCEDURE edit_user (
         user_id_    IN          users.user_id%TYPE,
         rolename_   IN          users.rolename%TYPE,
-        name_       IN          users.name%TYPE
+        name_       IN          users.name%TYPE,
+        status_     IN          users.status%TYPE
     ) IS
     BEGIN
         UPDATE users
         SET
             rolename = rolename_,
-            name = name_
+            name = name_,
+            status = status_
         WHERE
             user_id = user_id_;
 
@@ -103,6 +110,15 @@ CREATE OR REPLACE PACKAGE BODY user_handle AS
         WHERE user_id = user_id_;
     
     END update_hash;
+    
+    PROCEDURE block_user (
+        user_id_ IN           users.user_id%TYPE
+    ) IS
+    BEGIN
+        UPDATE USERS
+        SET status=0
+        WHERE user_id = user_id_;
+    END block_user;
 
     FUNCTION get_user (
         user_id_   IN         users.user_id%TYPE
@@ -158,6 +174,8 @@ CREATE OR REPLACE PACKAGE BODY user_handle AS
 
             exec_str := exec_str || '0=0';
         END IF;
+
+        exec_str := exec_str || ' ORDER BY USERCREATEDTIME DESC';
 
         OPEN ucur FOR exec_str;
 

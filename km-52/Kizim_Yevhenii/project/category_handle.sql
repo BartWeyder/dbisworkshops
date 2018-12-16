@@ -12,7 +12,7 @@ CREATE OR REPLACE PACKAGE category_handle AS
 
     FUNCTION get_category (
         categorytitle_ category.categorytitle%TYPE
-    ) RETURN category%rowtype;
+    ) RETURN SYS_REFCURSOR;
 
     FUNCTION filter_categories (
         categorytitle_ category.categorytitle%TYPE
@@ -48,12 +48,11 @@ CREATE OR REPLACE PACKAGE BODY category_handle AS
 
     FUNCTION get_category (
         categorytitle_ category.categorytitle%TYPE
-    ) RETURN category%rowtype IS
-        crec   category%rowtype;
+    ) RETURN SYS_REFCURSOR IS
+        crec   SYS_REFCURSOR;
     BEGIN
-        SELECT
+        OPEN crec FOR SELECT
             *
-        INTO crec
         FROM
             category
         WHERE
@@ -79,6 +78,8 @@ CREATE OR REPLACE PACKAGE BODY category_handle AS
                         || categorytitle_
                         || ''') > 0';
         END IF;
+        
+        exec_str := exec_str || ' ORDER BY CATEGORYTITLE ASC';
 
         OPEN ccur FOR exec_str;
 

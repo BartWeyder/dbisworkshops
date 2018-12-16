@@ -34,13 +34,15 @@ CREATE OR REPLACE PACKAGE post_handle AS
         pid_   post.pid%TYPE,
         tag_   tag.title%TYPE
     );
-
-    FUNCTION get_all_posts RETURN post_tbl
-        PIPELINED;
+    
+    PROCEDURE delete_tag_from_post (
+        pid_   post.pid%TYPE,
+        tag_   tag.title%TYPE
+    );
 
     FUNCTION get_post (
         pid_ post.pid%TYPE
-    ) RETURN post%rowtype;
+    ) RETURN SYS_REFCURSOR;
 
     FUNCTION filter_posts (
         user_id_         post.user_id%TYPE,
@@ -155,30 +157,23 @@ CREATE OR REPLACE PACKAGE BODY post_handle AS
         );
 
     END add_tag_to_post;
-
-    FUNCTION get_all_posts RETURN post_tbl
-        PIPELINED
-    IS
-        CURSOR pcur IS
-        SELECT
-            *
-        FROM
-            post;
-
+    
+    PROCEDURE delete_tag_from_post (
+        pid_   post.pid%TYPE,
+        tag_   tag.title%TYPE
+    ) IS
     BEGIN
-        FOR prec IN pcur LOOP
-            PIPE ROW ( prec );
-        END LOOP;
-    END get_all_posts;
+        DELETE FROM post_has_tags
+        WHERE pid=pid_ and title=tag_;
+    END delete_tag_from_post;
 
     FUNCTION get_post (
         pid_ post.pid%TYPE
-    ) RETURN post%rowtype IS
-        prec   post%rowtype;
+    ) RETURN SYS_REFCURSOR IS
+        prec   SYS_REFCURSOR;
     BEGIN
-        SELECT
+        OPEN prec FOR SELECT
             *
-        INTO prec
         FROM
             post
         WHERE
@@ -234,6 +229,8 @@ CREATE OR REPLACE PACKAGE BODY post_handle AS
 
             exec_str := exec_str || '0=0';
         END IF;
+
+        exec_str := exec_str || ' ORDER BY POSTCREATEDTIME DESC';
 
         OPEN pcur FOR exec_str;
 
