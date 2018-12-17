@@ -21,13 +21,10 @@ CREATE OR REPLACE PACKAGE post_handle AS
     PROCEDURE delete_post (
         pid_ post.pid%TYPE
     );
-
-    PROCEDURE publicate_post (
-        pid_ post.pid%TYPE
-    );
-
-    PROCEDURE hide_post (
-        pid_ post.pid%TYPE
+    
+    PROCEDURE set_status (
+        pid_ post.pid%TYPE,
+        status_ post.published%TYPE
     );
 
     PROCEDURE add_tag_to_post (
@@ -48,7 +45,8 @@ CREATE OR REPLACE PACKAGE post_handle AS
         user_id_         post.user_id%TYPE,
         posttitle_   post.posttitle%TYPE,
         posttext_    post.posttext%TYPE,
-        category_    post.categorytitle%TYPE
+        category_    post.categorytitle%TYPE,
+        status_      post.published%TYPE
     ) RETURN post_tbl
         PIPELINED;
 
@@ -118,30 +116,18 @@ CREATE OR REPLACE PACKAGE BODY post_handle AS
             post.pid = pid_;
 
     END delete_post;
-
-    PROCEDURE publicate_post (
-        pid_ post.pid%TYPE
+    
+    PROCEDURE set_status (
+        pid_ post.pid%TYPE,
+        status_ post.published%TYPE
     ) IS
     BEGIN
         UPDATE post
         SET
-            published = 1
+            published = status_
         WHERE
             post.pid = pid_;
-
-    END publicate_post;
-
-    PROCEDURE hide_post (
-        pid_ post.pid%TYPE
-    ) IS
-    BEGIN
-        UPDATE post
-        SET
-            published = 0
-        WHERE
-            post.pid = pid_;
-
-    END hide_post;
+    END set_status;
 
     PROCEDURE add_tag_to_post (
         pid_   post.pid%TYPE,
@@ -186,7 +172,8 @@ CREATE OR REPLACE PACKAGE BODY post_handle AS
         user_id_         post.user_id%TYPE,
         posttitle_   post.posttitle%TYPE,
         posttext_    post.posttext%TYPE,
-        category_    post.categorytitle%TYPE
+        category_    post.categorytitle%TYPE,
+        status_      post.published%TYPE
     ) RETURN post_tbl
         PIPELINED
     IS
@@ -195,7 +182,7 @@ CREATE OR REPLACE PACKAGE BODY post_handle AS
         pcur       postcursor;
         prec       post%rowtype;
     BEGIN
-        IF user_id_ IS NULL AND posttitle_ IS NULL AND posttext_ IS NULL AND category_ IS NULL THEN
+        IF user_id_ IS NULL AND posttitle_ IS NULL AND posttext_ IS NULL AND category_ IS NULL AND status_ IS NULL THEN
             exec_str := 'SELECT * FROM post';
         ELSE
             exec_str := exec_str || 'SELECT * FROM post WHERE ';
@@ -226,7 +213,14 @@ CREATE OR REPLACE PACKAGE BODY post_handle AS
                             || category_
                             || ''' AND ';
             END IF;
-
+            
+            IF status_ IS NOT NULL THEN
+                exec_str := exec_str
+                            || 'post.published <= '''
+                            || status_
+                            || ''' AND ';
+            END IF;
+            
             exec_str := exec_str || '0=0';
         END IF;
 

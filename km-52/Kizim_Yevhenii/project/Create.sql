@@ -161,7 +161,7 @@ CREATE TABLE users (
     user_id           INTEGER NOT NULL,
     rolename          VARCHAR(20) NOT NULL,
     name              VARCHAR2(100) NOT NULL,
-    user_hash         RAW(64),
+    user_hash         RAW(64) NOT NULL,
     usercreatedtime   DATE NOT NULL,
     status            INTEGER DEFAULT 1 NOT NULL,
     CONSTRAINT pk_user PRIMARY KEY ( user_id )
@@ -221,6 +221,8 @@ ALTER TABLE post
 ALTER TABLE post
     ADD CONSTRAINT post_text_check CHECK ( REGEXP_LIKE ( posttext,
                                                          '^[A-Za-z0-9 ;—–.,!?+<>\/-]{5,2000}$' ) );
+                                                         
+ALTER TABLE POST ADD CONSTRAINT post_unique UNIQUE(POSTTITLE, POSTTEXT);
 
 ALTER TABLE role
     ADD CONSTRAINT role_name_check CHECK ( REGEXP_LIKE ( rolename,

@@ -22,11 +22,12 @@ CREATE OR REPLACE PACKAGE answer_handle AS
 
     FUNCTION get_answer (
         aid_ answer.aid%TYPE
-    ) RETURN answer%rowtype;
+    ) RETURN SYS_REFCURSOR;
 
     FUNCTION filter_answers (
         answertitle_   answer.answertitle%TYPE,
         user_id_       answer.user_id%TYPE,
+        pid_           answer.pid%TYPE,
         answertext_    answer.answertext%TYPE
     ) RETURN answer_tbl
         PIPELINED;
@@ -97,12 +98,11 @@ CREATE OR REPLACE PACKAGE BODY answer_handle AS
 
     FUNCTION get_answer (
         aid_ answer.aid%TYPE
-    ) RETURN answer%rowtype IS
-        arec   answer%rowtype;
+    ) RETURN SYS_REFCURSOR IS
+        arec   SYS_REFCURSOR;
     BEGIN
-        SELECT
+        OPEN arec FOR SELECT
             *
-        INTO arec
         FROM
             answer
         WHERE
@@ -114,6 +114,7 @@ CREATE OR REPLACE PACKAGE BODY answer_handle AS
     FUNCTION filter_answers (
         answertitle_   answer.answertitle%TYPE,
         user_id_       answer.user_id%TYPE,
+        pid_           answer.pid%TYPE,
         answertext_    answer.answertext%TYPE
     ) RETURN answer_tbl
         PIPELINED
@@ -123,7 +124,7 @@ CREATE OR REPLACE PACKAGE BODY answer_handle AS
         acur       answercursor;
         arec       answer%rowtype;
     BEGIN
-        IF answertitle_ IS NULL AND user_id_ IS NULL AND answertext_ IS NULL THEN
+        IF answertitle_ IS NULL AND user_id_ IS NULL AND pid_ IS NULL AND answertext_ IS NULL THEN
             exec_str := 'SELECT * FROM answer';
         ELSE
             exec_str := 'SELECT * FROM answer WHERE ';
@@ -140,6 +141,13 @@ CREATE OR REPLACE PACKAGE BODY answer_handle AS
                             || user_id_
                             || ''' AND ';
             END IF;
+            
+            IF pid_ IS NOT NULL THEN
+                exec_str:= exec_str
+                            || 'answer.pid='''
+                            || pid_
+                            || ''' AND ';
+            END IF;
 
             IF answertext_ IS NOT NULL THEN
                 exec_str := exec_str
@@ -150,6 +158,8 @@ CREATE OR REPLACE PACKAGE BODY answer_handle AS
 
             exec_str := exec_str || '0=0';
         END IF;
+        
+        exec_str := exec_str || ' ORDER BY answer.ANSWERCREATEDTIME';
 
         OPEN acur FOR exec_str;
 
