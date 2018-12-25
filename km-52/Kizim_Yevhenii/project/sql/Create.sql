@@ -61,16 +61,16 @@ CREATE TABLE answer (
 /*==============================================================*/
 /* Index: USER_HAS_ANSWERS_FK                                   */
 /*==============================================================*/
---create index USER_HAS_ANSWERS_FK on ANSWER (
---   PHONE ASC
---);
---
---/*==============================================================*/
---/* Index: POST_HAS_ANSWER_FK                                    */
---/*==============================================================*/
---create index POST_HAS_ANSWER_FK on ANSWER (
---   PID ASC
---);
+create index USER_HAS_ANSWERS_FK on ANSWER (
+   PHONE ASC
+);
+
+/*==============================================================*/
+/* Index: POST_HAS_ANSWER_FK                                    */
+/*==============================================================*/
+create index POST_HAS_ANSWER_FK on ANSWER (
+   PID ASC
+);
 
 /*==============================================================*/
 /* Table: CATEGORY                                              */
@@ -90,7 +90,7 @@ CREATE TABLE post (
     user_id           INTEGER NOT NULL,
     posttitle         VARCHAR2(256) NOT NULL,
     posttext          VARCHAR2(2000) NOT NULL,
-    published         SMALLINT NOT NULL,
+    published         DATE,
     postcreatedtime   DATE NOT NULL,
     categorytitle     VARCHAR(40) NOT NULL,
     CONSTRAINT pk_post PRIMARY KEY ( pid )
@@ -99,16 +99,16 @@ CREATE TABLE post (
 /*==============================================================*/
 /* Index: USER_HAS_POSTS_FK                                     */
 /*==============================================================*/
---create index USER_HAS_POSTS_FK on POST (
---   PHONE ASC
---);
---
---/*==============================================================*/
---/* Index: POST_HAS_CATEGORY_FK                                  */
---/*==============================================================*/
---create index POST_HAS_CATEGORY_FK on POST (
---   CATEGORYTITLE ASC
---);
+create index USER_HAS_POSTS_FK on POST (
+   USER_ID ASC
+);
+
+/*==============================================================*/
+/* Index: POST_HAS_CATEGORY_FK                                  */
+/*==============================================================*/
+create index POST_HAS_CATEGORY_FK on POST (
+   CATEGORYTITLE ASC
+);
 
 /*==============================================================*/
 /* Table: POST_HAS_TAGS                                         */
@@ -124,16 +124,16 @@ CREATE TABLE post_has_tags (
 /*==============================================================*/
 /* Index: POST_HAS_TAGS2_FK                                     */
 /*==============================================================*/
---create index POST_HAS_TAGS2_FK on POST_HAS_TAGS (
---   TITLE ASC
---);
---
---/*==============================================================*/
---/* Index: POST_HAS_TAGS_FK                                      */
---/*==============================================================*/
---create index POST_HAS_TAGS_FK on POST_HAS_TAGS (
---   PID ASC
---);
+create index POST_HAS_TAGS2_FK on POST_HAS_TAGS (
+   TITLE ASC
+);
+
+/*==============================================================*/
+/* Index: POST_HAS_TAGS_FK                                      */
+/*==============================================================*/
+create index POST_HAS_TAGS_FK on POST_HAS_TAGS (
+   PID ASC
+);
 
 /*==============================================================*/
 /* Table: ROLE                                                  */
@@ -150,6 +150,7 @@ CREATE TABLE role (
 
 CREATE TABLE tag (
     title   VARCHAR(40) NOT NULL,
+    deleted DATE,
     CONSTRAINT pk_tag PRIMARY KEY ( title )
 );
 
@@ -163,20 +164,24 @@ CREATE TABLE users (
     name              VARCHAR2(100) NOT NULL,
     user_hash         RAW(64) NOT NULL,
     usercreatedtime   DATE NOT NULL,
-    status            INTEGER DEFAULT 1 NOT NULL,
+    blocked           DATE DEFAULT NULL,
+    deleted           DATE DEFAULT NULL,
     CONSTRAINT pk_user PRIMARY KEY ( user_id )
 );
 
 /*==============================================================*/
 /* Index: USER_HAS_ROLE_FK                                      */
 /*==============================================================*/
---create index USER_HAS_ROLE_FK on USERS (
---   ROLENAME ASC
---);
+create index USER_HAS_ROLE_FK on USERS (
+   ROLENAME ASC
+);
 
 ALTER TABLE answer
     ADD CONSTRAINT fk_answer_post_has__post FOREIGN KEY ( pid )
         REFERENCES post ( pid );
+        
+ALTER TABLE answer
+    ADD CONSTRAINT PID_UNIQUE UNIQUE(pid);
 
 ALTER TABLE answer
     ADD CONSTRAINT fk_answer_user_has__user FOREIGN KEY ( user_id )

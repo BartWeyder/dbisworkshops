@@ -4,6 +4,7 @@ CREATE OR REPLACE PACKAGE answer_handle AS
     TYPE answer_tbl IS
         TABLE OF answer%rowtype;
     FUNCTION add_answer (
+        status         OUT            VARCHAR2,
         user_id_       answer.user_id%TYPE,
         pid_           answer.pid%TYPE,
         answertitle_   answer.answertitle%TYPE,
@@ -11,13 +12,15 @@ CREATE OR REPLACE PACKAGE answer_handle AS
     ) RETURN answer.aid%TYPE;
 
     PROCEDURE edit_answer (
+        status         OUT            VARCHAR2,
         aid_           answer.aid%TYPE,
         answertitle_   answer.answertitle%TYPE,
         answertext_    answer.answertext%TYPE
     );
 
     PROCEDURE delete_answer (
-        aid_ answer.aid%TYPE
+        status   OUT      VARCHAR2,
+        aid_     answer.aid%TYPE
     );
 
     FUNCTION get_answer (
@@ -38,6 +41,7 @@ END answer_handle;
 CREATE OR REPLACE PACKAGE BODY answer_handle AS
 
     FUNCTION add_answer (
+        status         OUT            VARCHAR2,
         user_id_       answer.user_id%TYPE,
         pid_           answer.pid%TYPE,
         answertitle_   answer.answertitle%TYPE,
@@ -64,14 +68,31 @@ CREATE OR REPLACE PACKAGE BODY answer_handle AS
 
         UPDATE post
         SET
-            published = 1
+            published = current_timestamp
         WHERE
             pid = pid_;
 
+        status := 'ok';
         RETURN aid_;
+
+    EXCEPTION
+        WHEN dup_val_on_index THEN
+            status := 'answer already exists';
+        WHEN OTHERS THEN
+            IF instr(sqlerrm, 'ANSWER_TEXT_CHECK') != 0 THEN
+                status := 'Text allows only alphanumeric symbols and .,!?<>\/-';
+            ELSIF instr(sqlerrm, 'ANSWER_TITLE_CHECK') != 0 THEN
+                status := 'Title allows only alphabethic symbols and ,!.-';
+            ELSIF instr(sqlerrm, 'PID_UNIQUE') != 0 THEN
+                status := 'Answer for this post already exists, edit or delete old one.';
+            ELSE
+                status := 'Uknown error. Please contact support.';
+            END IF;
+
     END add_answer;
 
     PROCEDURE edit_answer (
+        status         OUT            VARCHAR2,
         aid_           answer.aid%TYPE,
         answertitle_   answer.answertitle%TYPE,
         answertext_    answer.answertext%TYPE
@@ -84,16 +105,33 @@ CREATE OR REPLACE PACKAGE BODY answer_handle AS
         WHERE
             answer.aid = aid_;
 
+        status := 'ok';
+    EXCEPTION
+        WHEN dup_val_on_index THEN
+            status := 'answer already exists';
+        WHEN OTHERS THEN
+            IF instr(sqlerrm, 'ANSWER_TEXT_CHECK') != 0 THEN
+                status := 'Text allows only alphanumeric symbols and .,!?<>\/-';
+            ELSIF instr(sqlerrm, 'ANSWER_TITLE_CHECK') != 0 THEN
+                status := 'Title allows only alphabethic symbols and ,!.-';
+            ELSE
+                status := 'Uknown error. Please contact support.';
+            END IF;
     END edit_answer;
 
     PROCEDURE delete_answer (
-        aid_ answer.aid%TYPE
+        status   OUT      VARCHAR2,
+        aid_     answer.aid%TYPE
     ) IS
     BEGIN
         DELETE FROM answer
         WHERE
             answer.aid = aid_;
 
+        status := 'ok';
+    EXCEPTION
+        WHEN OTHERS THEN
+            status := 'Uknown error. Please contact support.';
     END delete_answer;
 
     FUNCTION get_answer (
@@ -102,11 +140,11 @@ CREATE OR REPLACE PACKAGE BODY answer_handle AS
         arec   SYS_REFCURSOR;
     BEGIN
         OPEN arec FOR SELECT
-            *
-        FROM
-            answer
-        WHERE
-            answer.aid = aid_;
+                          *
+                      FROM
+                          answer
+                      WHERE
+                          answer.aid = aid_;
 
         RETURN arec;
     END get_answer;
@@ -141,9 +179,9 @@ CREATE OR REPLACE PACKAGE BODY answer_handle AS
                             || user_id_
                             || ''' AND ';
             END IF;
-            
+
             IF pid_ IS NOT NULL THEN
-                exec_str:= exec_str
+                exec_str := exec_str
                             || 'answer.pid='''
                             || pid_
                             || ''' AND ';
@@ -158,9 +196,8 @@ CREATE OR REPLACE PACKAGE BODY answer_handle AS
 
             exec_str := exec_str || '0=0';
         END IF;
-        
-        exec_str := exec_str || ' ORDER BY answer.ANSWERCREATEDTIME';
 
+        exec_str := exec_str || ' ORDER BY answer.ANSWERCREATEDTIME';
         OPEN acur FOR exec_str;
 
         LOOP

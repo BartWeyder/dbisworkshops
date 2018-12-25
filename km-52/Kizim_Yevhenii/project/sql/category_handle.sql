@@ -1,13 +1,15 @@
 CREATE OR REPLACE PACKAGE category_handle AS
-    system_category_deletion EXCEPTION;
+
     TYPE category_tbl IS
         TABLE OF category%rowtype;
     PROCEDURE add_category (
-        categorytitle_ category.categorytitle%TYPE
+        status           OUT              VARCHAR2,
+        categorytitle_   category.categorytitle%TYPE
     );
 
     PROCEDURE delete_category (
-        categorytitle_ category.categorytitle%TYPE
+        status           OUT              VARCHAR2,
+        categorytitle_   category.categorytitle%TYPE
     );
 
     FUNCTION get_category (
@@ -25,25 +27,37 @@ END category_handle;
 CREATE OR REPLACE PACKAGE BODY category_handle AS
 
     PROCEDURE add_category (
-        categorytitle_ category.categorytitle%TYPE
+        status           OUT              VARCHAR2,
+        categorytitle_   category.categorytitle%TYPE
     ) IS
     BEGIN
         INSERT INTO category ( categorytitle ) VALUES ( categorytitle_ );
 
+        status := 'ok';
+    EXCEPTION
+        WHEN dup_val_on_index THEN
+            status := 'Category already exists';
+        WHEN OTHERS THEN
+            status := 'Uknown error. Please contact support.';
     END add_category;
 
     PROCEDURE delete_category (
-        categorytitle_ category.categorytitle%TYPE
+        status           OUT              VARCHAR2,
+        categorytitle_   category.categorytitle%TYPE
     ) IS
     BEGIN
         IF categorytitle_ = 'Other' THEN
-            RAISE system_category_deletion;
+            status := 'You are trying to delete system category.';
         ELSE
             DELETE FROM category
             WHERE
                 category.categorytitle = categorytitle_;
 
+            status := 'ok';
         END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            status := 'Uknown error while deletion. Please contact support.';
     END delete_category;
 
     FUNCTION get_category (
@@ -52,11 +66,11 @@ CREATE OR REPLACE PACKAGE BODY category_handle AS
         crec   SYS_REFCURSOR;
     BEGIN
         OPEN crec FOR SELECT
-            *
-        FROM
-            category
-        WHERE
-            category.categorytitle = categorytitle_;
+                          *
+                      FROM
+                          category
+                      WHERE
+                          category.categorytitle = categorytitle_;
 
         RETURN crec;
     END get_category;
@@ -78,9 +92,8 @@ CREATE OR REPLACE PACKAGE BODY category_handle AS
                         || categorytitle_
                         || ''') > 0';
         END IF;
-        
-        exec_str := exec_str || ' ORDER BY CATEGORYTITLE ASC';
 
+        exec_str := exec_str || ' ORDER BY CATEGORYTITLE ASC';
         OPEN ccur FOR exec_str;
 
         LOOP

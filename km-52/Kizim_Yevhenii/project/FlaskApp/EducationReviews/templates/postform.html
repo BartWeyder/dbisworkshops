@@ -1,0 +1,14 @@
+﻿{% extends "layout.html" %}
+
+{% block content %}
+<form method=post enctype=multipart/form-data>
+    <fieldset>
+        {{form.hidden_tag()}}
+        {{form.title.label}} {{form.title}} <br />
+        {{form.text.label}} {{form.text}} <br />
+        {{form.category.label}} {{form.category}} <br />
+        {{form.submit}}
+    </fieldset>
+</form>
+
+{% endblock %}

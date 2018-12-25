@@ -3,10 +3,12 @@ CREATE OR REPLACE PACKAGE role_handle AS
         TABLE OF role%rowtype;
     system_roles_deletion EXCEPTION;
     PROCEDURE add_role (
+        status         OUT varchar2,
         rolename_ role.rolename%TYPE
     );
 
     PROCEDURE delete_role (
+        status         OUT varchar2,
         rolename_ role.rolename%TYPE
     );
 
@@ -25,14 +27,28 @@ END role_handle;
 CREATE OR REPLACE PACKAGE BODY role_handle AS
 
     PROCEDURE add_role (
+        status         OUT varchar2,
         rolename_ role.rolename%TYPE
     ) IS
     BEGIN
         INSERT INTO role VALUES ( rolename_ );
-
+        status := 'ok';
+        
+    EXCEPTION
+        WHEN dup_val_on_index THEN
+            status := 'Role already exists';
+        WHEN OTHERS THEN
+            IF instr(sqlerrm, 'ROLE_NAME_CHECK') != 0 THEN
+                status := 'Role name allows only alphanumeric values.';
+            ELSIF instr(sqlerrm, 'PK_ROLE') != 0 THEN
+                status := 'Role already exists';
+            ELSE
+                status := 'Uknown error. Please contact support.';
+            END IF;
     END add_role;
 
     PROCEDURE delete_role (
+        status         OUT varchar2,
         rolename_ role.rolename%TYPE
     ) IS
     BEGIN
@@ -40,10 +56,18 @@ CREATE OR REPLACE PACKAGE BODY role_handle AS
             DELETE role
             WHERE
                 rolename = rolename_;
+            status := 'ok';
 
         ELSE
-            RAISE system_roles_deletion;
+            status := 'System role deletion is denied.';
         END IF;
+        
+            
+        
+    EXCEPTION
+        WHEN OTHERS THEN
+            status := 'Uknown error while role deletion. Please contact support.';
+            
     END delete_role;
 
     FUNCTION get_role (

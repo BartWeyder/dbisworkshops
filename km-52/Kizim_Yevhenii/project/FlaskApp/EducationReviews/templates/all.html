@@ -1,0 +1,12 @@
+﻿{% extends "layout.html" %}
+
+{% block content %}
+
+{% for rec in data %}
+<div>
+    <h6>{{rec[2]}}</h6>
+    <a href="{{ url_for('view_post', pid=rec[0]) }}" class="btn btn-primary">View</a>
+</div>
+{% endfor %}
+
+{% endblock %}
